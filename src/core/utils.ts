@@ -12,12 +12,12 @@ export function rad(degrees: number): number {
 
 /** `CFrame` com posição + rotação em graus. */
 export function rotCFrame(position: Vector3, rotation?: Vec3Tuple | Vector3): CFrame {
-	const cframe = CFrame.new(position);
+	const cframe = new CFrame(position);
 	if (rotation === undefined) {
 		return cframe;
 	}
 	const r = toV3(rotation);
-	return cframe.mul(CFrame.Angles(math.rad(r.x), math.rad(r.y), math.rad(r.z)));
+	return cframe.mul(CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)));
 }
 
 /** Clareia/escurece uma cor multiplicando os canais (fator 1 = original). */
@@ -46,20 +46,20 @@ export type Interval = [from: number, to: number];
 export function subtractIntervals(from: number, to: number, cuts: Interval[]): Interval[] {
 	let pieces: Interval[] = [[from, to]];
 	for (const cut of cuts) {
-		const next: Interval[] = [];
+		const remaining: Interval[] = [];
 		for (const piece of pieces) {
 			if (cut[1] <= piece[0] || cut[0] >= piece[1]) {
-				next.push(piece); // não encosta neste pedaço
+				remaining.push(piece); // não encosta neste pedaço
 			} else {
 				if (cut[0] > piece[0]) {
-					next.push([piece[0], cut[0]]);
+					remaining.push([piece[0], cut[0]]);
 				}
 				if (cut[1] < piece[1]) {
-					next.push([cut[1], piece[1]]);
+					remaining.push([cut[1], piece[1]]);
 				}
 			}
 		}
-		pieces = next;
+		pieces = remaining;
 	}
 	return pieces;
 }

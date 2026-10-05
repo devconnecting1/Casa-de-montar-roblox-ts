@@ -5,11 +5,9 @@ import { buildInterior } from "./house/interior";
 import { buildOpenings } from "./house/openings";
 import { buildPorch } from "./house/porch";
 import { buildRoof } from "./house/roof";
+import { buildCabin, buildGuestHouse } from "./house/variants";
 import { buildWalls } from "./house/walls";
-import { buildFence } from "./yard/fence";
-import { buildGarden } from "./yard/garden";
-import { buildGround } from "./yard/ground";
-import { buildPath } from "./yard/path";
+import { buildYard } from "./structures/yard";
 
 /**
  * Cena completa: monta o `Model BlockHouseDemo` no Workspace.
@@ -17,6 +15,13 @@ import { buildPath } from "./yard/path";
  * Ordem importa (fundação → paredes → telhado → resto).
  * Idempotente: se já existir um Model com o mesmo nome, remove antes
  * para não duplicar a casa a cada Play.
+ *
+ * Conteúdo:
+ *  - Casa principal (origem, 34×24) + varanda + chaminé + interior;
+ *  - Cabana do Caseiro (oeste, 16×12) e Casa de Hóspedes (leste, 20×14),
+ *    cada uma com interior próprio (`house/variants.ts`);
+ *  - Quintal em 6 fases (`structures/yard.ts`: chão, cerca, caminho,
+ *    vegetação com troncos cilíndricos corretos, iluminação, detalhes).
  */
 export function buildScene(workspace = game.GetService("Workspace")): Model {
 	const t0 = os.clock();
@@ -30,8 +35,7 @@ export function buildScene(workspace = game.GetService("Workspace")): Model {
 	root.Name = SCENE.rootName;
 	root.Parent = workspace;
 
-	// Terreno primeiro (a casa senta em cima dele).
-	buildGround(root);
+	// Casa principal.
 	buildFoundation(root);
 	buildWalls(root);
 	buildOpenings(root);
@@ -40,10 +44,12 @@ export function buildScene(workspace = game.GetService("Workspace")): Model {
 	buildPorch(root);
 	buildInterior(root);
 
-	// Quintal.
-	buildPath(root);
-	buildFence(root);
-	buildGarden(root);
+	// Casas 2 e 3 (paramétricas, com interior).
+	buildCabin(root);
+	buildGuestHouse(root);
+
+	// Quintal (faseado, com nomes fixos 00_Chao ... 05_Detalhes).
+	buildYard({ parent: root, name: "10_Quintal" });
 
 	// Diagnóstico de engenharia: quantas peças e quanto tempo.
 	let parts = 0;

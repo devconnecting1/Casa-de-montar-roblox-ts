@@ -26,10 +26,10 @@ function frontOpenings(): WallOpening[] {
 	];
 	// Duas janelas flanqueando a porta (mundo x = -10 e +10).
 	for (const wx of [-10, 10]) {
-		const local = wx - HOUSE.x0; // 0..width
+		const lx = wx - HOUSE.x0; // 0..width (`local` é palavra reservada em Luau)
 		openings.push({
-			from: local - HOUSE.window.width / 2,
-			to: local + HOUSE.window.width / 2,
+			from: lx - HOUSE.window.width / 2,
+			to: lx + HOUSE.window.width / 2,
 			fromY: HOUSE.window.sill,
 			toY: HOUSE.window.sill + HOUSE.window.height,
 		});
@@ -40,10 +40,10 @@ function frontOpenings(): WallOpening[] {
 function backOpenings(): WallOpening[] {
 	const openings: WallOpening[] = [];
 	for (const wx of [-10, 0, 10]) {
-		const local = wx - HOUSE.x0;
+		const lx = wx - HOUSE.x0;
 		openings.push({
-			from: local - HOUSE.window.width / 2,
-			to: local + HOUSE.window.width / 2,
+			from: lx - HOUSE.window.width / 2,
+			to: lx + HOUSE.window.width / 2,
 			fromY: HOUSE.window.sill,
 			toY: HOUSE.window.sill + HOUSE.window.height,
 		});

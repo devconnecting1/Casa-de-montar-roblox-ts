@@ -14,25 +14,20 @@ import { hash01, subtractIntervals, tint, toV3, type Interval } from "./utils";
  *     └─ ...
  */
 export class ModelBuilder {
-	private readonly model: Model;
+	public readonly root: Model;
 
 	constructor(name: string, parent?: Instance) {
-		this.model = createModel(name, parent);
-	}
-
-	/** Model raiz (para devolver ou agrupar). */
-	get root(): Model {
-		return this.model;
+		this.root = createModel(name, parent);
 	}
 
 	/** Cria um Model filho organizado (ex.: `"02_Paredes"`). */
 	group(name: string): Model {
-		return createModel(name, this.model);
+		return createModel(name, this.root);
 	}
 
 	/** Cria um bloco dentro do builder. */
 	add(options: BlockOptions): BasePart {
-		return createBlock({ ...options, parent: options.parent ?? this.model });
+		return createBlock({ ...options, parent: options.parent ?? this.root });
 	}
 
 	/**
@@ -56,7 +51,7 @@ export class ModelBuilder {
 		const baseColor = resolveColor(options.color ?? "brick");
 		const material = options.material ?? Enum.Material.Brick;
 
-		const container = createModel(options.name ?? "Wall", options.parent ?? this.model);
+		const container = createModel(options.name ?? "Wall", options.parent ?? this.root);
 		const parts: BasePart[] = [];
 		const rows = math.ceil(height / brickHeight);
 		let brickIndex = 0;
@@ -86,17 +81,17 @@ export class ModelBuilder {
 						const segmentLength = segment[1] - segment[0];
 						if (segmentLength > 0.05) {
 							const along = (segment[0] + segment[1]) / 2;
-							const centerY = origin.y + (rowFrom + rowTo) / 2;
+							const centerY = origin.Y + (rowFrom + rowTo) / 2;
 							const sizeY = rowTo - rowFrom;
 
 							let size: Vector3;
 							let position: Vector3;
 							if (axis === "x") {
 								size = new Vector3(segmentLength, sizeY, thickness);
-								position = new Vector3(origin.x + along, centerY, origin.z + thickness / 2);
+								position = new Vector3(origin.X + along, centerY, origin.Z + thickness / 2);
 							} else {
 								size = new Vector3(thickness, sizeY, segmentLength);
-								position = new Vector3(origin.x + thickness / 2, centerY, origin.z + along);
+								position = new Vector3(origin.X + thickness / 2, centerY, origin.Z + along);
 							}
 
 							// tom ligeiramente diferente por bloco: sem isso as juntas
@@ -126,6 +121,6 @@ export class ModelBuilder {
 
 	/** Devolve o Model pronto (já parentado, se o construtor recebeu um pai). */
 	finish(): Model {
-		return this.model;
+		return this.root;
 	}
 }

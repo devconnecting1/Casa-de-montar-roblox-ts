@@ -173,11 +173,41 @@ for(let i=0;i<12;i++) box(5,0.4,2.6,i%2?PAL.concrete:PAL.path,(hash01(i*3+1)-.5)
 const F=60;
 for(let x=-F;x<=F;x+=10){ if(Math.abs(x)>5) box(1,4,1,PAL.woodDark,x,2,F); box(1,4,1,PAL.woodDark,x,2,-F); }
 for(let z=-F;z<=F;z+=10){ box(1,4,1,PAL.woodDark,-F,2,z); box(1,4,1,PAL.woodDark,F,2,z); }
-function tree(x,z,s){ box(1.6*s,8*s,1.6*s,PAL.trunk,x,4*s,z);
-  box(5*s,4*s,5*s,PAL.leaf,x,8*s+1.5*s,z,'ball'); box(3.8*s,3*s,3.8*s,PAL.leafDark,x,8*s+4*s,z); }
-function ball(x,y,z,d,c){ const m=new THREE.Mesh(new THREE.SphereGeometry(d/2,20,14),mat(c)); m.position.set(x,y,z); m.castShadow=true; root.add(m); count++; }
-tree(-38,-28,1.2); tree(40,-20,1); tree(-42,25,.9);
-for(const [x,z] of [[-12,14],[12,14],[-19,8],[19,8]]) ball(x,1.2,z,3,PAL.leaf);
+// --- vegetação (mesmas posições de src/structures/yard.ts) ---
+// Tronco = cilindro vertical (em Three.js o cilindro já cresce em Y,
+// ao contrário do Roblox, onde precisa girar 90° em Z). Copa = 3 esferas.
+function trunk(x,z,s){
+  const h=8.5*s, d=1.5*s;
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(d/2,d/2*1.15,h,12),mat(PAL.trunk));
+  m.position.set(x,h/2-0.15,z); m.castShadow=m.receiveShadow=true; root.add(m); count++;
+}
+function tree(x,z,s,seed){
+  trunk(x,z,s);
+  const blobs=[[1.6,5.2],[4.2,4.0],[6.4,2.8]];
+  blobs.forEach(([dy,size],i)=>{
+    const d=size*s;
+    const m=new THREE.Mesh(new THREE.SphereGeometry(d/2,20,14),mat(i%2?PAL.leaf:PAL.leafDark));
+    m.scale.y=0.85; m.position.set(x,8.5*s+dy*s,z);
+    m.castShadow=true; root.add(m); count++;
+  });
+}
+function ball(x,y,z,d,c){ const m=new THREE.Mesh(new THREE.SphereGeometry(d/2,20,14),mat(c)); m.scale.y=0.8; m.position.set(x,y,z); m.castShadow=m.receiveShadow=true; root.add(m); count++; }
+tree(-32,-30,1.1,1); tree(33,-34,0.95,2); tree(-44,34,1.0,3); tree(44,36,1.2,4); tree(25,47,1.0,5);
+for(const [x,z,d] of [[-11,17,3.2],[11,17,3.2],[-24,-17,3.6],[24,-19,3.2],[-10,34,2.8],[10,42,3.0]]) ball(x,d*0.35,z,d,PAL.leaf);
+
+// --- casas 2 e 3 (massing fiel: mesma pegada/altura de src/house/variants.ts) ---
+function smallHouse(cx,cz,w,d,h,wallCol,roofCol,doorW,doorOff){
+  box(w+1,1,d+1,PAL.concrete,cx,0.5,cz);                       // laje
+  box(w,h,d,wallCol,cx,1+h/2,cz);                              // corpo
+  box(doorW-0.4,6.8,0.4,PAL.door,cx+doorOff,1+3.4,cz+d/2-0.4);  // porta
+  for(const s of [-1,1]) for(const off of [-w/4,w/4])          // janelas frente/fundos
+    box(3.7,2.7,0.3,PAL.glass,cx+off,1+5,cz+s*(d/2-0.4));
+  const rise=h*0.55, half=d/2+1.8, slope=Math.hypot(half,rise), a=Math.atan2(rise,half);
+  box(w+3.6,0.5,slope,roofCol,cx,1+h+rise/2,cz+half/2,a,0,0);
+  box(w+3.6,0.5,slope,roofCol,cx,1+h+rise/2,cz-half/2,-a,0,0);
+}
+smallHouse(-38,-4,16,12,8,PAL.wood,PAL.woodDark,5,0);    // Cabana do Caseiro
+smallHouse(38,-4,20,14,9,0xbd6249,PAL.roof,5,-4);        // Casa de Hóspedes
 
 document.getElementById('stats').textContent = `${count} meshes (1 mesh = 1 Part no Roblox) · arraste p/ orbitar · scroll p/ zoom`;
 document.getElementById('rot').onclick=e=>{ controls.autoRotate=!controls.autoRotate; e.target.textContent=controls.autoRotate?'⏸ pausar órbita':'▶ retomar órbita'; };
