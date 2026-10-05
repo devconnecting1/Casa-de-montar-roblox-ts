@@ -4,6 +4,12 @@ Uma casa inteira **construída bloco a bloco por código**: fundação, alvenari
 
 Escrito em **TypeScript (roblox-ts)** e compilado para **Luau**. É o equivalente a montar uma casa de Lego com um manual escrito em linguagem de programação — cada bloco tem coordenada, cor e tamanho decididos por algoritmo.
 
+## 🌐 Ver ao vivo (GitHub Pages)
+
+**[Abrir o preview 3D](https://devconnecting1.github.io/Casa-de-montar-roblox-ts/)** — o visualizador Three.js de `preview/` (mesmas medidas de `src/config.ts`, cada caixa = 1 `Part`) publicado automaticamente a cada push na `main` pelo workflow `.github/workflows/pages.yml`. O workflow `ci.yml` valida `npm run typecheck` + `npm run build` (TypeScript → Luau) no mesmo push.
+
+> Na primeira vez é preciso ativar: **Settings → Pages → Source: GitHub Actions** (uma única vez).
+
 ```
                               /---\
                             /-------\
