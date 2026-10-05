@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Casa Blocos de Montar — Preview TypeScript → Roblox</title>
+<style>
+  html,body{margin:0;height:100%;font-family:system-ui,Arial,sans-serif;background:#0f1419;color:#e8e8e8}
+  #app{display:flex;height:100%}
+  #view{flex:1;position:relative}
+  canvas{display:block}
+  aside{width:340px;padding:18px;background:#151c23;border-left:1px solid #2a3441;overflow:auto}
+  h1{font-size:18px;margin:0 0 8px}
+  p,li{font-size:13px;line-height:1.5;color:#c6d0db}
+  code{background:#222c37;padding:2px 6px;border-radius:6px;color:#ffd98a}
+  .row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+  button{background:#2b6cb0;border:0;color:white;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  button.ghost{background:#2a3441}
+  #stats{font-size:12px;color:#9fb0c3;margin-top:8px}
+  .badge{display:inline-block;background:#1f7a4d;padding:2px 8px;border-radius:20px;font-size:11px;margin-right:6px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view"></div>
+  <aside>
+    <h1>🏠 Casa Blocos de Montar</h1>
+    <div><span class="badge">roblox-ts</span><span class="badge">Luau</span><span class="badge">Three.js preview</span></div>
+    <p>Mesmo <code>config.ts</code> do Roblox, replicado aqui em JS para você <b>ver o resultado sem abrir o Studio</b>.
+    Cada caixa = 1 <code>Part</code> no Roblox.</p>
+    <div class="row">
+      <button id="rot">⏸ pausar órbita</button>
+      <button id="top" class="ghost">⬒ topo</button>
+      <button id="front" class="ghost">⬓ frente</button>
+      <button id="wire" class="ghost">wireframe</button>
+    </div>
+    <ul>
+      <li><b>Marrom:</b> paredes em <i>running bond</i> (fiadas alternadas, junta escalonada)</li>
+      <li><b>Vermelho telhado:</b> 2 águas + oitões em escada + cumeeira</li>
+      <li><b>Azul:</b> vidros · <b>Branco:</b> molduras · <b>Cinza:</b> fundação/caminho</li>
+      <li>Fonte da verdade: <code>src/config.ts</code> — paredes, porta, janelas e telhado derivam de lá</li>
+    </ul>
+    <p>Para levar ao Roblox: <code>npm install &amp;&amp; npm run build</code> (gera <code>out/*.lua</code> via <code>rbxtsc</code>) e sincronize com <b>Rojo</b>. Veja o <code>README.md</code>.</p>
+    <div id="stats">contando blocos…</div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---- Mesmo contrato de src/config.ts ----
+const HOUSE = { x0:-17, x1:17, z0:-12, z1:12, width:34, depth:24, baseY:1, wallHeight:12, wallThickness:1,
+  blocks:{height:1,length:3}, door:{x:0,height:8,width:6}, window:{height:4,sill:4,width:5},
+  roof:{overhang:2.5,rise:8} };
+const PAL = { brick:0xa8503c, brickDark:0x8d3f30, trim:0xf2f0e8, glass:0xa9d7e8, door:0x5a3a1e,
+  roof:0x7d3b3b, roofDark:0x613030, concrete:0xb9bcbe, stone:0x9aa0a6, stoneDark:0x7b8187,
+  wood:0x8a5a2b, woodDark:0x5f3d1d, woodLight:0xb07f45, grass:0x5aa34a, dirt:0x7a5a3a,
+  path:0xc9c2b4, leaf:0x3f8f3a, leafDark:0x2f7030, trunk:0x6b4a2f, metal:0x3a3f45,
+  mailRed:0xc73b3b, lamp:0xffd98a, mortar:0xd8d3c7 };
+
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(view.clientWidth, view.clientHeight);
+renderer.shadowMap.enabled = true;
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f1419);
+scene.fog = new THREE.Fog(0x0f1419, 200, 500);
+const camera = new THREE.PerspectiveCamera(50, view.clientWidth/view.clientHeight, 0.1, 2000);
+camera.position.set(52, 42, 68);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 8, 8);
+controls.autoRotate = true; controls.autoRotateSpeed = 0.8;
+
+scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x3a2f23, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(60, 90, 40); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-90,right:90,top:90,bottom:-90});
+scene.add(sun);
+
+const root = new THREE.Group(); scene.add(root);
+let count = 0; let wire = false;
+const mats = {};
+function mat(color){ if(!mats[color]) mats[color]=new THREE.MeshStandardMaterial({color,roughness:.85,metalness:.02}); return mats[color]; }
+function box(w,h,d,color,x,y,z,rx=0,ry=0,rz=0){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat(color).clone());
+  if(wire) m.material.wireframe = true;
+  m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+  m.castShadow = m.receiveShadow = true; root.add(m); count++;
+  return m;
+}
+function hash01(i){ const v = Math.sin(i*12.9898)*43758.5453; return v-Math.floor(v); }
+function shade(hex,f){ const c=new THREE.Color(hex); c.multiplyScalar(f); return c.getHex(); }
+
+// terreno + fundação
+box(240,10,240,PAL.grass,0,-5,0);
+box(44,.2,34,PAL.dirt,0,.1,0);
+box(36,1,26,PAL.stoneDark,0,.5,0);
+box(34,1,24,PAL.concrete,0,.5,0);
+
+// paredes bloco a bloco
+function wall({origin,length,height,axis,openings=[]}){
+  const rows = Math.ceil(height/1);
+  let idx=0;
+  for(let r=0;r<rows;r++){
+    const y0=r, y1=Math.min(r+1,height);
+    const offset = r%2===1 ? -1.5 : 0;
+    const cuts = openings.filter(o=>o.fromY<y1&&o.toY>y0).map(o=>[o.from,o.to]);
+    for(let c=offset;c<length;c+=3){
+      let from=Math.max(c,0), to=Math.min(c+3,length);
+      if(to<=from) continue;
+      // subtrai vãos
+      let pieces=[[from,to]];
+      for(const cut of cuts){
+        const next=[];
+        for(const p of pieces){
+          if(cut[1]<=p[0]||cut[0]>=p[1]) next.push(p);
+          else{ if(cut[0]>p[0]) next.push([p[0],cut[0]]); if(cut[1]<p[1]) next.push([cut[1],p[1]]); }
+        }
+        pieces=next;
+      }
+      for(const s of pieces){
+        const len=s[1]-s[0]; if(len<0.05) continue;
+        const along=(s[0]+s[1])/2, cy=1+(y0+y1)/2;
+        const f=1+(hash01(idx)-.5)*2*.05; idx++;
+        const col=shade(PAL.brick,f);
+        if(axis==='x') box(len,y1-y0,1,col,origin[0]+along,cy,origin[2]+.5);
+        else box(1,y1-y0,len,col,origin[0]+.5,cy,origin[2]+along);
+      }
+    }
+  }
+}
+const W=HOUSE.width, D=HOUSE.depth, t=1, y=HOUSE.baseY;
+const doorFrom=W/2-HOUSE.door.width/2;
+const frontOpen=[{from:doorFrom,to:doorFrom+6,fromY:0,toY:8},
+  {from:(-10+17)-2.5,to:(-10+17)+2.5,fromY:4,toY:8},
+  {from:(10+17)-2.5,to:(10+17)+2.5,fromY:4,toY:8}];
+const backOpen=[-10,0,10].map(wx=>({from:(wx+17)-2.5,to:(wx+17)+2.5,fromY:4,toY:8}));
+const sideLen=D-2;
+const sideOpen=[sideLen*.3,sideLen*.7].map(c=>({from:c-2.5,to:c+2.5,fromY:4,toY:8}));
+wall({origin:[HOUSE.x0,y,HOUSE.z1-t],length:W,height:12,axis:'x',openings:frontOpen});
+wall({origin:[HOUSE.x0,y,HOUSE.z0],length:W,height:12,axis:'x',openings:backOpen});
+wall({origin:[HOUSE.x0,y,HOUSE.z0+t],length:sideLen,height:12,axis:'z',openings:sideOpen});
+wall({origin:[HOUSE.x1-t,y,HOUSE.z0+t],length:sideLen,height:12,axis:'z',openings:sideOpen});
+
+// porta + janelas simplificadas
+box(5.4,7.8,.4,PAL.door,0,1+3.9,12-.5);
+box(6.8,.6,1.6,PAL.trim,0,9.3,11.5);
+for(const wx of [-10,10]){ box(4.6,3.6,.3,PAL.glass,wx,7,11.5); box(5.6,.5,1.5,PAL.trim,wx,4.8,11.5); }
+for(const wx of [-10,0,10]){ box(4.6,3.6,.3,PAL.glass,wx,7,-11.5); }
+// telhado
+const topY=13, halfSpan=D/2+2.5, rise=8, slope=Math.hypot(halfSpan,rise), ang=Math.atan2(rise,halfSpan);
+const panelW=W+5;
+box(panelW,.6,slope,PAL.roof,0,topY+rise/2+.3,halfSpan/2,ang,0,0);
+box(panelW,.6,slope,PAL.roof,0,topY+rise/2+.3,-halfSpan/2,-ang,0,0);
+box(panelW+.6,.8,1.2,PAL.roofDark,0,topY+rise+.4,0);
+for(let i=0;i<8;i++){ const f=1-i/8, rd=(D-1)*f; if(rd<.6) continue;
+  box(1,1,rd,i%2?PAL.brickDark:PAL.brick,HOUSE.x0+.5,topY+1+i,0);
+  box(1,1,rd,i%2?PAL.brickDark:PAL.brick,HOUSE.x1-.5,topY+1+i,0); }
+// chaminé + varanda + caminho + cerca + árvores
+box(3,12,3,PAL.brickDark,10,13, -6); box(5,1,5,PAL.stoneDark,10,22.5,-6);
+for(let i=0;i<3;i++) box(9-i*1.2,.6,2,PAL.stone,0,.9-i*.55,13.6+i*1.7);
+box(11,.5,3,PAL.concrete,0,1.05,13.2);
+box(.9,9,.9,PAL.woodDark,-4.5,5.5,14.4); box(.9,9,.9,PAL.woodDark,4.5,5.5,14.4);
+box(11,.5,4.5,PAL.roofDark,0,10.4,13.6,0.14,0,0);
+for(let i=0;i<12;i++) box(5,0.4,2.6,i%2?PAL.concrete:PAL.path,(hash01(i*3+1)-.5)*.8,.2,15+(62-15)*i/11);
+const F=60;
+for(let x=-F;x<=F;x+=10){ if(Math.abs(x)>5) box(1,4,1,PAL.woodDark,x,2,F); box(1,4,1,PAL.woodDark,x,2,-F); }
+for(let z=-F;z<=F;z+=10){ box(1,4,1,PAL.woodDark,-F,2,z); box(1,4,1,PAL.woodDark,F,2,z); }
+function tree(x,z,s){ box(1.6*s,8*s,1.6*s,PAL.trunk,x,4*s,z);
+  box(5*s,4*s,5*s,PAL.leaf,x,8*s+1.5*s,z,'ball'); box(3.8*s,3*s,3.8*s,PAL.leafDark,x,8*s+4*s,z); }
+function ball(x,y,z,d,c){ const m=new THREE.Mesh(new THREE.SphereGeometry(d/2,20,14),mat(c)); m.position.set(x,y,z); m.castShadow=true; root.add(m); count++; }
+tree(-38,-28,1.2); tree(40,-20,1); tree(-42,25,.9);
+for(const [x,z] of [[-12,14],[12,14],[-19,8],[19,8]]) ball(x,1.2,z,3,PAL.leaf);
+
+document.getElementById('stats').textContent = `${count} meshes (1 mesh = 1 Part no Roblox) · arraste p/ orbitar · scroll p/ zoom`;
+document.getElementById('rot').onclick=e=>{ controls.autoRotate=!controls.autoRotate; e.target.textContent=controls.autoRotate?'⏸ pausar órbita':'▶ retomar órbita'; };
+document.getElementById('top').onclick=()=>{ camera.position.set(0,130,1); controls.target.set(0,0,0); };
+document.getElementById('front').onclick=()=>{ camera.position.set(0,18,95); controls.target.set(0,10,0); };
+document.getElementById('wire').onclick=()=>{ wire=!wire; root.traverse(o=>{ if(o.isMesh) o.material.wireframe=wire; }); };
+addEventListener('resize',()=>{ renderer.setSize(view.clientWidth,view.clientHeight); camera.aspect=view.clientWidth/view.clientHeight; camera.updateProjectionMatrix(); });
+(function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
+</script>
+</body>
+</html>

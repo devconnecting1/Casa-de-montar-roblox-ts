@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		// exigido pelo roblox-ts 3.0.0 (validateCompilerOptions)
+		"allowSyntheticDefaultImports": true,
+		"downlevelIteration": true,
+		"module": "commonjs",
+		"moduleResolution": "Node",
+		"moduleDetection": "force",
+		"noLib": true,
+		"strict": true,
+		"target": "ESNext",
+		"typeRoots": ["node_modules/@rbxts"],
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": true,
+		// @rbxts/types interno tem erros com TS 5.5.3; sem isto, `npm run typecheck` (tsc puro) enche de ruído
+		"skipLibCheck": true,
+
+		// configurável (template oficial create-roblox-ts)
+		"rootDir": "src",
+		"outDir": "out",
+		"baseUrl": "src",
+		"incremental": true,
+		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
+	},
+	"include": ["src"]
+}
